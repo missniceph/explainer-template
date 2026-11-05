@@ -12,12 +12,15 @@ import {
 } from "./engine.js";
 
 const app = document.getElementById("app");
+const params = new URLSearchParams(location.search);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const scrollTo = (el) => el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
 
 /* Which content file to load. Default: content/topic.json.
  * For testing other files in the same repo: ?topic=my-other-file
  * (loads content/my-other-file.json; only simple names are allowed). */
 function contentPath() {
-  const name = new URLSearchParams(location.search).get("topic");
+  const name = params.get("topic");
   if (name && /^[a-z0-9-]{1,60}$/i.test(name)) return `content/${name}.json`;
   return "content/topic.json";
 }
@@ -36,7 +39,7 @@ function h(tag, attrs = {}, ...children) {
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
     else el.setAttribute(k, v === true ? "" : v);
   }
-  for (const child of children.flat()) {
+  for (const child of children.flat(Infinity)) {
     if (child === null || child === undefined || child === false) continue;
     el.append(child instanceof Node ? child : document.createTextNode(String(child)));
   }
@@ -74,36 +77,37 @@ function fill(template, vars) {
 
 function formatDate(iso, lang) {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat(lang || "en-PH", {
+  return new Intl.DateTimeFormat(lang, {
     year: "numeric", month: "long", day: "numeric", timeZone: "UTC"
   }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
 function formatTime(hhmm, lang) {
   const [hh, mm] = hhmm.split(":").map(Number);
-  return new Intl.DateTimeFormat(lang || "en-PH", {
+  return new Intl.DateTimeFormat(lang, {
     hour: "numeric", minute: "2-digit", timeZone: "UTC"
   }).format(new Date(Date.UTC(2000, 0, 1, hh, mm)));
 }
 
-/* "Today" as YYYY-MM-DD in the topic's time zone (default Philippine time). */
-function todayIn(offset) {
-  const ms = Date.now() + offsetMinutes(offset) * 60000;
-  return new Date(ms).toISOString().slice(0, 10);
+/* Falls back to Philippine time if the offset is missing or malformed,
+ * so a typo can never crash the page before the error screen shows. */
+function safeOffset(offset) {
+  return typeof offset === "string" && /^[+-](0\d|1[0-4]):[0-5]\d$/.test(offset) ? offset : "+08:00";
 }
 
-function offsetMinutes(offset = "+08:00") {
-  const sign = offset[0] === "-" ? -1 : 1;
-  const [hh, mm] = offset.slice(1).split(":").map(Number);
-  return sign * (hh * 60 + mm);
+/* "Today" as YYYY-MM-DD in the topic's time zone. */
+function todayIn(offset) {
+  const o = safeOffset(offset);
+  const sign = o[0] === "-" ? -1 : 1;
+  const [hh, mm] = o.slice(1).split(":").map(Number);
+  return new Date(Date.now() + sign * (hh * 60 + mm) * 60000).toISOString().slice(0, 10);
 }
 
 function countdownText(d, offset, ui) {
   const today = todayIn(offset);
   const dayDiff = Math.round((Date.parse(d.date) - Date.parse(today)) / 86400000);
   if (d.time) {
-    const due = Date.parse(`${d.date}T${d.time}:00${offset}`);
-    const left = due - Date.now();
+    const left = Date.parse(`${d.date}T${d.time}:00${offset}`) - Date.now();
     if (left <= 0) return { text: ui.passed, state: "passed" };
     if (left < 48 * 3600000) {
       const hours = Math.max(1, Math.ceil(left / 3600000));
@@ -127,15 +131,14 @@ function showProblem(title, intro, items = [], hint) {
       h("h1", { text: title }),
       h("p", { text: intro }),
       items.length ? h("ol", { class: "problem-list" },
-        items.map((e) => h("li", {},
-          h("code", { text: e.where }), " ", e.message))) : null,
+        items.map((e) => h("li", {}, h("code", { text: e.where }), " ", e.message))) : null,
       hint ? h("p", { class: "muted", html: formatText(hint) }) : null
     )
   );
 }
 
 function jsonErrorDetail(text, err) {
-  const msg = String(err && err.message || err);
+  const msg = String((err && err.message) || err);
   let line, col;
   const lc = msg.match(/line (\d+) column (\d+)/i);
   const pos = msg.match(/position (\d+)/i);
@@ -155,6 +158,18 @@ function jsonErrorDetail(text, err) {
   return { where, tips };
 }
 
+/* In ?check mode on the live site: warn if the link-preview tags in
+ * index.html still point at a different address (e.g. the template's). */
+function previewWarnings() {
+  const out = [];
+  const here = location.origin + location.pathname.replace(/index\.html$/, "");
+  const ogUrl = document.querySelector('meta[property="og:url"]')?.content;
+  const ogImg = document.querySelector('meta[property="og:image"]')?.content;
+  if (ogUrl && ogUrl !== here) out.push({ where: "index.html › og:url", message: `Link previews point to ${ogUrl}, but this page is ${here}. Update the link-preview lines in index.html.` });
+  if (ogImg && !ogImg.startsWith(here)) out.push({ where: "index.html › og:image", message: `The share image address (${ogImg}) isn't on this site. Update it in index.html.` });
+  return out;
+}
+
 /* ------------------------------------------------------------------ */
 /* Main                                                                 */
 /* ------------------------------------------------------------------ */
@@ -163,7 +178,8 @@ async function main() {
   const path = contentPath();
   let text;
   try {
-    const res = await fetch(path, { cache: "no-cache" });
+    // Uses the browser's normal caching so it can reuse the <link rel=preload>.
+    const res = await fetch(path);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     text = await res.text();
   } catch (err) {
@@ -196,8 +212,8 @@ async function main() {
   }
 
   const report = validateContent(content, { today: todayIn(content?.meta?.utcOffset) });
-  const isLocal = ["localhost", "127.0.0.1", ""].includes(location.hostname) ||
-    new URLSearchParams(location.search).has("check");
+  const isLocal = ["localhost", "127.0.0.1", ""].includes(location.hostname);
+  if (params.has("check") && !isLocal) report.warnings.push(...previewWarnings());
   if (report.warnings.length) {
     console.groupCollapsed(`Explainer: ${report.warnings.length} warning(s) in ${path}`);
     report.warnings.forEach((w) => console.warn(`${w.where}: ${w.message}`));
@@ -213,7 +229,7 @@ async function main() {
     return;
   }
 
-  render(content, isLocal ? report.warnings : []);
+  render(content, isLocal || params.has("check") ? report.warnings : []);
 }
 
 /* ------------------------------------------------------------------ */
@@ -222,24 +238,28 @@ async function main() {
 
 function render(c, warnings) {
   const ui = { ...DEFAULT_UI, ...(c.ui || {}) };
-  const lang = c.meta.lang || "en";
-  const offset = c.meta.utcOffset || "+08:00";
+  const lang = c.meta.lang || "en-PH";
+  const offset = safeOffset(c.meta.utcOffset);
+  const asOfText = fill(ui.asOf, { date: formatDate(c.meta.asOf, lang) });
   document.documentElement.lang = lang;
   document.title = c.meta.title + (c.meta.channel?.name ? ` · ${c.meta.channel.name}` : "");
-  const desc = document.querySelector('meta[name="description"]');
-  if (desc && c.meta.description) desc.setAttribute("content", c.meta.description);
+  if (c.meta.description) document.querySelector('meta[name="description"]')?.setAttribute("content", c.meta.description);
 
-  setupChrome(c, ui, lang);
+  setupChrome(c, ui, asOfText);
 
   const sourceNumber = new Map(c.sources.map((s, i) => [s.id, i + 1]));
+  const sourceTitle = new Map(c.sources.map((s) => [s.id, s.title]));
   const cite = (refs) => {
     if (!refs || !refs.length) return null;
     return h("span", { class: "cites" },
       refs.map((id) => h("a", {
         class: "cite", href: `#src-${id}`,
-        "aria-label": `${ui.sourcesHeading} ${sourceNumber.get(id)}`
+        "aria-label": `${ui.sourceLabel} ${sourceNumber.get(id)}: ${sourceTitle.get(id)}`
       }, `[${sourceNumber.get(id)}]`)));
   };
+  const sourceLine = (refs) => (refs && refs.length)
+    ? h("p", { class: "source-line" }, `${ui.sourcesHeading}: `, cite(refs))
+    : null;
 
   /* State — in memory only. */
   let answers = {};
@@ -253,33 +273,30 @@ function render(c, warnings) {
     : null;
 
   /* ---------- Intro ---------- */
+  const startBtn = h("button", { class: "btn primary", type: "button", onclick: () => startChecker(false) }, ui.start);
   const intro = h("section", { class: "intro", "aria-labelledby": "page-title" },
     c.meta.sample ? h("p", { class: "sample-tag", text: ui.sampleBanner }) : null,
     h("h1", { id: "page-title", text: c.meta.title }),
     c.meta.subtitle ? h("p", { class: "subtitle", text: c.meta.subtitle }) : null,
-    h("p", { class: "as-of" }, h("span", { class: "dot", "aria-hidden": "true" }),
-      fill(ui.asOf, { date: formatDate(c.meta.asOf, lang) })),
+    h("p", { class: "as-of" }, h("span", { class: "dot", "aria-hidden": "true" }), asOfText),
     h("div", { class: "card intro-card" },
       c.intro.heading ? h("h2", { text: c.intro.heading }) : null,
       paragraphs(c.intro.body),
       h("div", { class: "actions" },
-        h("button", { class: "btn primary", type: "button", onclick: () => startChecker() }, ui.start),
+        startBtn,
         h("button", { class: "btn link", type: "button", onclick: () => skipAll() }, ui.skip)),
-      (c.intro.timeNote || ui.timeNote) ? h("p", { class: "muted small", text: c.intro.timeNote || ui.timeNote }) : null,
-      h("p", { class: "privacy-line" }, h("span", { class: "lock", "aria-hidden": "true" }, "🔒"), " ", ui.privacyLine)
+      c.intro.timeNote ? h("p", { class: "muted small", text: c.intro.timeNote }) : null,
+      h("p", { class: "privacy-line" }, h("span", { "aria-hidden": "true" }, "🔒 "), ui.privacyLine)
     )
   );
 
-  /* ---------- Checker ---------- */
   const checker = h("section", { class: "card checker", id: "checker", hidden: true, "aria-labelledby": "checker-q" });
-
-  /* ---------- Results & rest ---------- */
   const results = h("div", { id: "results", hidden: true });
-
   app.replaceChildren(...[warningsBox, intro, checker, results].filter(Boolean));
 
-  function startChecker() {
-    answers = {};
+  /* keep = true: "Change my answers" (previous choices stay ticked). */
+  function startChecker(keep) {
+    if (!keep) answers = {};
     step = 0;
     skipped = false;
     results.hidden = true;
@@ -296,22 +313,19 @@ function render(c, warnings) {
 
   function drawQuestion(focus) {
     const qs = visibleQuestions(c, answers);
-    if (step >= qs.length) step = qs.length - 1;
+    step = Math.min(step, qs.length - 1);
     const q = qs[step];
     const type = q.type || "single";
     const current = answers[q.id];
     const total = qs.length;
+    const isLast = step === total - 1;
     const errorId = `err-${q.id}`;
     const error = h("p", { class: "field-error", id: errorId, role: "alert", hidden: true, text: ui.needAnswer });
 
     const options = q.options.map((o) => {
       const checked = type === "multi" ? (current || []).includes(o.value) : current === o.value;
-      const input = h("input", {
-        type: type === "multi" ? "checkbox" : "radio",
-        name: q.id, value: o.value, checked
-      });
       return h("label", { class: "option" },
-        input,
+        h("input", { type: type === "multi" ? "checkbox" : "radio", name: q.id, value: o.value, checked }),
         h("span", { class: "option-text" },
           h("span", { class: "option-label", text: o.label }),
           o.help ? h("span", { class: "option-help", text: o.help }) : null));
@@ -324,9 +338,8 @@ function render(c, warnings) {
       h("div", { class: "options" }, options),
       error);
 
-    const pct = Math.round((step / total) * 100);
     const bar = h("div", { class: "progress-bar" });
-    bar.style.width = `${Math.max(pct, 4)}%`;
+    bar.style.width = `${Math.max(Math.round((step / total) * 100), 4)}%`;
 
     const form = h("form", {
       novalidate: true,
@@ -335,8 +348,8 @@ function render(c, warnings) {
         const picked = [...form.querySelectorAll(`input[name="${q.id}"]:checked`)].map((i) => i.value);
         if (picked.length === 0 && !q.optional) {
           error.hidden = false;
-          form.querySelector("input")?.setAttribute("aria-describedby", errorId);
-          form.querySelector("input")?.focus();
+          form.querySelectorAll("input").forEach((i) => i.setAttribute("aria-describedby", errorId));
+          form.querySelector("input").focus();
           return;
         }
         if (type === "multi") answers[q.id] = picked;
@@ -344,7 +357,7 @@ function render(c, warnings) {
         else delete answers[q.id];
         const after = visibleQuestions(c, answers);
         if (step >= after.length - 1) {
-          // Drop answers to questions that ended up hidden.
+          // Forget answers to questions that ended up hidden.
           const shown = new Set(after.map((x) => x.id));
           for (const k of Object.keys(answers)) if (!shown.has(k)) delete answers[k];
           checker.hidden = true;
@@ -355,42 +368,46 @@ function render(c, warnings) {
         }
       }
     },
-      h("div", { class: "progress", role: "group", "aria-label": fill(ui.questionOf, { n: step + 1, total }) },
+      h("div", { class: "progress" },
         h("p", { class: "progress-label", "aria-live": "polite", text: fill(ui.questionOf, { n: step + 1, total }) }),
         h("div", { class: "progress-track", "aria-hidden": "true" }, bar)),
       fieldset,
       h("div", { class: "actions split" },
-        step > 0
-          ? h("button", { class: "btn ghost", type: "button", onclick: () => { step -= 1; drawQuestion(true); } }, `← ${ui.back}`)
-          : h("button", { class: "btn ghost", type: "button", onclick: () => { checker.hidden = true; intro.scrollIntoView({ behavior: "smooth" }); } }, `← ${ui.back}`),
-        h("button", { class: "btn primary", type: "submit" }, step === total - 1 ? ui.seeResult : `${ui.next} →`))
+        h("button", {
+          class: "btn ghost", type: "button",
+          onclick: () => {
+            if (step > 0) { step -= 1; drawQuestion(true); return; }
+            checker.hidden = true;
+            scrollTo(intro);
+            startBtn.focus({ preventScroll: true });
+          }
+        }, h("span", { "aria-hidden": "true" }, "← "), ui.back),
+        h("button", { class: "btn primary", type: "submit" },
+          isLast ? ui.seeResult : ui.next, isLast ? null : h("span", { "aria-hidden": "true" }, " →")))
     );
 
     checker.replaceChildren(form);
     if (focus) {
-      checker.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollTo(checker);
       form.querySelector("legend").focus({ preventScroll: true });
     }
   }
 
   function showResults() {
     const blocks = skipped
-      ? (c.skippedResult ? computeResult({ rules: [{ when: "always", show: [c.skippedResult] }], resultBlocks: c.resultBlocks }, {}) : [])
+      ? (c.resultBlocks.filter((b) => b.id === c.skippedResult))
       : computeResult(c, answers);
     const include = (item) => skipped || evaluate(item.when, answers);
-
     const sections = [];
 
     /* Result */
-    const answerSummary = !skipped
-      ? h("details", { class: "answers" },
+    const answerSummary = skipped ? null
+      : h("details", { class: "answers" },
           h("summary", {}, ui.yourAnswers),
           h("dl", {}, visibleQuestions(c, answers).filter((q) => answers[q.id] !== undefined).map((q) => {
-            const vals = [].concat(answers[q.id]);
-            const labels = vals.map((v) => q.options.find((o) => o.value === v)?.label).join(", ");
+            const labels = [].concat(answers[q.id]).map((v) => q.options.find((o) => o.value === v)?.label).join(", ");
             return [h("dt", { text: q.text }), h("dd", { text: labels || "—" })];
-          })))
-      : null;
+          })));
 
     sections.push(h("section", { class: "result", "aria-labelledby": "result-h" },
       h("h2", { id: "result-h", tabindex: "-1", text: ui.resultHeading }),
@@ -398,25 +415,29 @@ function render(c, warnings) {
       blocks.map((b) => h("article", { class: `result-block tone-${b.tone || "info"}` },
         h("h3", { text: b.title }),
         paragraphs(b.body),
-        b.sources?.length ? h("p", { class: "source-line" }, `${ui.sourcesHeading}: `, cite(b.sources)) : null)),
+        sourceLine(b.sources))),
       answerSummary,
-      h("div", { class: "actions" },
-        h("button", { class: "btn ghost", type: "button", onclick: () => startChecker() }, skipped ? ui.start : ui.editAnswers))
+      h("div", { class: "actions no-print" },
+        skipped
+          ? h("button", { class: "btn primary", type: "button", onclick: () => startChecker(false) }, ui.start)
+          : [
+              h("button", { class: "btn ghost", type: "button", onclick: () => startChecker(true) }, ui.editAnswers),
+              h("button", { class: "btn link", type: "button", onclick: () => startChecker(false) }, ui.startOver)
+            ])
     ));
 
     /* Checklist */
     const items = c.checklist.items.filter(include);
     if (items.length) {
-      const progress = h("p", { class: "muted small checklist-progress", "aria-live": "polite" });
+      const progress = h("p", { class: "muted small", "aria-live": "polite" });
       const update = () => {
-        const boxes = list.querySelectorAll("input");
-        const done = [...boxes].filter((b) => b.checked).length;
-        progress.textContent = fill(ui.checklistProgress, { done, total: boxes.length });
+        const boxes = [...list.querySelectorAll("input")];
+        progress.textContent = fill(ui.checklistProgress, { done: boxes.filter((b) => b.checked).length, total: boxes.length });
       };
-      const list = h("ul", { class: "checklist" }, items.map((it, i) =>
+      const list = h("ul", { class: "checklist" }, items.map((it) =>
         h("li", {},
           h("label", {},
-            h("input", { type: "checkbox", id: `chk-${i}`, onchange: update }),
+            h("input", { type: "checkbox", onchange: update }),
             h("span", {},
               h("span", { class: "chk-text", html: formatText(it.text) }),
               it.detail ? h("span", { class: "chk-detail", html: formatText(it.detail) }) : null)),
@@ -435,21 +456,20 @@ function render(c, warnings) {
       const ds = c.deadlines.items.filter(include)
         .slice().sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
       if (ds.length) {
+        const monthFmt = new Intl.DateTimeFormat(lang, { month: "short", timeZone: "UTC" });
         sections.push(h("section", { class: "card", "aria-labelledby": "deadlines-h" },
           h("h2", { id: "deadlines-h", text: c.deadlines.heading || ui.deadlinesHeading }),
           c.deadlines.intro ? paragraphs(c.deadlines.intro, "muted") : null,
           h("ol", { class: "deadlines" }, ds.map((d) => {
             const [y, m, day] = d.date.split("-").map(Number);
-            const dt = new Date(Date.UTC(y, m - 1, day));
             const badge = d.countdown ? h("span", { class: "countdown" }) : null;
             if (badge) {
               badge.dataset.date = d.date;
               if (d.time) badge.dataset.time = d.time;
             }
-            const cd = d.countdown ? countdownText(d, offset, ui) : null;
-            return h("li", { class: `deadline${cd ? ` state-${cd.state}` : ""}` },
+            return h("li", { class: "deadline" },
               h("div", { class: "date-chip", "aria-hidden": "true" },
-                h("span", { class: "m", text: new Intl.DateTimeFormat(lang, { month: "short", timeZone: "UTC" }).format(dt) }),
+                h("span", { class: "m", text: monthFmt.format(new Date(Date.UTC(y, m - 1, day))) }),
                 h("span", { class: "d", text: String(day) })),
               h("div", { class: "deadline-body" },
                 h("h3", { text: d.title }),
@@ -459,7 +479,7 @@ function render(c, warnings) {
                     (d.time && c.meta.timeZoneLabel ? ` (${c.meta.timeZoneLabel})` : "")),
                   badge),
                 d.description ? paragraphs(d.description) : null,
-                cite(d.sources)));
+                sourceLine(d.sources)));
           }))));
       }
     }
@@ -470,19 +490,19 @@ function render(c, warnings) {
       h("div", { class: "faq" }, c.faq.items.map((f) =>
         h("details", {},
           h("summary", {}, f.question),
-          h("div", { class: "faq-a" }, paragraphs(f.answer), cite(f.sources)))))));
+          h("div", { class: "faq-a" }, paragraphs(f.answer), sourceLine(f.sources)))))));
 
     /* Disclaimer */
     sections.push(h("aside", { class: "disclaimer", "aria-labelledby": "disc-h" },
       h("h2", { id: "disc-h", text: ui.disclaimerHeading }),
       paragraphs(c.disclaimer),
-      h("p", { class: "small", text: fill(ui.asOf, { date: formatDate(c.meta.asOf, lang) }) })));
+      h("p", { class: "small", text: asOfText })));
 
     /* Sources */
     sections.push(h("section", { class: "card", "aria-labelledby": "sources-h" },
       h("h2", { id: "sources-h", text: ui.sourcesHeading }),
       h("ol", { class: "sources" }, c.sources.map((s) =>
-        h("li", { id: `src-${s.id}` },
+        h("li", { id: `src-${s.id}`, tabindex: "-1" },
           s.url
             ? h("a", { href: s.url, target: "_blank", rel: "noopener noreferrer", text: s.title })
             : h("span", { text: s.title }),
@@ -497,7 +517,7 @@ function render(c, warnings) {
     results.hidden = false;
     updateCountdowns();
     const heading = results.querySelector("#result-h");
-    heading.scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollTo(heading);
     heading.focus({ preventScroll: true });
   }
 
@@ -519,32 +539,35 @@ function render(c, warnings) {
 
 function signupSection(s, ui) {
   const preview = isSignupPlaceholder(s);
-  const status = h("p", { class: "signup-status", role: "status", "aria-live": "polite" });
-  const email = h("input", { type: "email", id: "signup-email", name: "email", autocomplete: "email", required: true, inputmode: "email", placeholder: "you@example.com" });
-  const consent = h("input", { type: "checkbox", id: "signup-consent", name: "consent", required: true });
-  const button = h("button", { class: "btn primary", type: "submit" }, s.submitLabel || ui.signupSubmit);
+  const submitText = s.submitLabel || ui.signupSubmit;
+  const status = h("p", { class: "signup-status", id: "signup-status", role: "status", "aria-live": "polite" });
+  const email = h("input", {
+    type: "email", id: "signup-email", name: "email", autocomplete: "email", required: true,
+    inputmode: "email", spellcheck: "false", "aria-describedby": "signup-status"
+  });
+  const consent = h("input", { type: "checkbox", id: "signup-consent", name: "consent", required: true, "aria-describedby": "signup-status" });
+  const button = h("button", { class: "btn primary", type: "submit" }, submitText);
+
+  const fail = (msg, field) => {
+    status.textContent = msg;
+    status.className = "signup-status is-error";
+    if (field) { field.setAttribute("aria-invalid", "true"); field.focus(); }
+  };
 
   const form = h("form", {
     class: "signup-form", novalidate: true,
     onsubmit: async (e) => {
       e.preventDefault();
       status.className = "signup-status";
+      status.textContent = "";
+      email.removeAttribute("aria-invalid");
+      consent.removeAttribute("aria-invalid");
       const value = email.value.trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
-        status.textContent = ui.signupErrorEmail;
-        status.classList.add("is-error");
-        email.focus();
-        return;
-      }
-      if (!consent.checked) {
-        status.textContent = ui.signupErrorConsent;
-        status.classList.add("is-error");
-        consent.focus();
-        return;
-      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) return fail(ui.signupErrorEmail, email);
+      if (!consent.checked) return fail(ui.signupErrorConsent, consent);
       if (preview) {
         status.textContent = ui.signupPreview;
-        status.classList.add("is-warn");
+        status.className = "signup-status is-warn";
         return;
       }
       button.disabled = true;
@@ -559,14 +582,14 @@ function signupSection(s, ui) {
         // "no-cors": Google doesn't let us read the reply, so we can only
         // tell that the request left the browser, not that Google saved it.
         await fetch(s.formAction, { method: "POST", mode: "no-cors", body });
-        form.replaceChildren(h("p", { class: "signup-success", role: "status", tabindex: "-1" },
-          "✓ ", s.successMessage || "Thank you! You're on the list."));
-        form.querySelector(".signup-success").focus();
+        const done = h("p", { class: "signup-success", role: "status", tabindex: "-1" },
+          h("span", { "aria-hidden": "true" }, "✓ "), s.successMessage || ui.signupSuccess);
+        form.replaceChildren(done);
+        done.focus();
       } catch {
-        status.textContent = ui.signupErrorNetwork;
-        status.classList.add("is-error");
+        fail(ui.signupErrorNetwork);
         button.disabled = false;
-        button.textContent = s.submitLabel || ui.signupSubmit;
+        button.textContent = submitText;
       }
     }
   },
@@ -575,7 +598,7 @@ function signupSection(s, ui) {
     h("label", { class: "consent" }, consent, h("span", { html: formatText(s.consentLabel) })),
     h("div", { class: "privacy-notice" },
       paragraphs(s.privacyNotice, "small"),
-      s.privacyUrl ? h("p", { class: "small" }, h("a", { href: s.privacyUrl, target: "_blank", rel: "noopener noreferrer" }, "Privacy policy")) : null),
+      s.privacyUrl ? h("p", { class: "small" }, h("a", { href: s.privacyUrl, target: "_blank", rel: "noopener noreferrer", text: ui.privacyPolicy })) : null),
     button,
     status
   );
@@ -591,47 +614,44 @@ function signupSection(s, ui) {
 /* Header, footer, sample banner, theme toggle                          */
 /* ------------------------------------------------------------------ */
 
-function setupChrome(c, ui, lang) {
+function setupChrome(c, ui, asOfText) {
   const ch = c.meta.channel || {};
   const brand = document.getElementById("brand");
-  if (brand) {
-    if (ch.name) brand.querySelector(".brand-name").textContent = ch.name;
-    if (ch.handle) brand.querySelector(".brand-handle").textContent = ch.handle;
-    if (ch.url) brand.setAttribute("href", ch.url);
-  }
+  if (ch.name) brand.querySelector(".brand-name").textContent = ch.name;
+  if (ch.handle) brand.querySelector(".brand-handle").textContent = ch.handle;
+  if (ch.url) brand.setAttribute("href", ch.url);
 
-  const banner = document.getElementById("sample-banner");
-  if (banner && c.meta.sample) {
+  document.querySelector(".skip-link").textContent = ui.skipToContent;
+
+  if (c.meta.sample) {
+    const banner = document.getElementById("sample-banner");
     banner.textContent = ui.sampleBanner;
     banner.hidden = false;
   }
 
-  const foot = document.getElementById("footer-meta");
-  if (foot) {
-    foot.replaceChildren(
-      h("p", {}, fill(ui.asOf, { date: formatDate(c.meta.asOf, lang) })),
-      h("p", {}, ui.privacyLine));
-  }
+  document.getElementById("footer-meta").replaceChildren(h("p", {}, asOfText), h("p", {}, ui.privacyLine));
+  document.getElementById("footer-note").textContent = ui.footerNote;
+  document.getElementById("follow-link").textContent = ui.followUs;
+  document.getElementById("top-link").textContent = ui.backToTop;
 
   const toggle = document.getElementById("theme-toggle");
-  if (toggle) {
-    const label = () => {
-      const dark = document.documentElement.dataset.theme === "dark" ||
-        (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
-      toggle.setAttribute("aria-label", dark ? ui.themeToLight : ui.themeToDark);
-      toggle.setAttribute("title", dark ? ui.themeToLight : ui.themeToDark);
-      toggle.dataset.mode = dark ? "dark" : "light";
-    };
+  const root = document.documentElement;
+  const dark = matchMedia("(prefers-color-scheme: dark)");
+  const label = () => {
+    const isDark = root.dataset.theme ? root.dataset.theme === "dark" : dark.matches;
+    const text = isDark ? ui.themeToLight : ui.themeToDark;
+    toggle.setAttribute("aria-label", text);
+    toggle.title = text;
+    toggle.dataset.mode = isDark ? "dark" : "light";
+  };
+  label();
+  toggle.addEventListener("click", () => {
+    const next = toggle.dataset.mode === "dark" ? "light" : "dark";
+    root.dataset.theme = next;
+    try { localStorage.setItem("explainer-theme", next); } catch { /* storage blocked: fine */ }
     label();
-    toggle.addEventListener("click", () => {
-      const dark = toggle.dataset.mode === "dark";
-      const next = dark ? "light" : "dark";
-      document.documentElement.dataset.theme = next;
-      try { localStorage.setItem("explainer-theme", next); } catch { /* storage blocked: fine */ }
-      label();
-    });
-    matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", label);
-  }
+  });
+  dark.addEventListener("change", label);
 }
 
 main();

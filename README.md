@@ -16,6 +16,22 @@ Every explainer follows the same path:
 
 ---
 
+## What's here and how to update it
+
+| File | What it is | When to change it |
+|---|---|---|
+| `content/topic.json` | **All the words, questions, rules, dates and sources.** | Every new explainer, and whenever facts change. This is the only file you normally edit. |
+| `index.html` | The page shell, including the link-preview lines (title, description, address, share image). | Once per explainer: the lines between the "EDIT FOR EACH EXPLAINER" markers. |
+| `assets/share.png` | The image shown when the link is shared (1200 × 630). Made from `assets/share.svg`. | Optional. It's generic, so it works for every explainer as is. |
+| `assets/style.css` | Colors and layout. Colors are at the top (one light block, two identical dark blocks). | Only to change the look. |
+| `assets/favicon.svg`, `favicon-32.png`, `apple-touch-icon.png` | Browser tab and phone home-screen icons. | Rarely. |
+| `assets/app.js`, `assets/engine.js` | The code that draws the page and checks your content. | Not needed. |
+| `tools/validate.mjs`, `.github/workflows/` | The automatic ✓/✗ check that runs on GitHub when you save. | Not needed. |
+
+**Updating a live explainer:** open `content/topic.json` on GitHub, click the pencil icon, change the facts, change `"asOf"` to today's date, and click **Commit changes**. Wait for the green ✓. The live page updates within about 10 minutes.
+
+---
+
 ## Contents
 
 1. [One-time setup: turn this repo into a template](#1-one-time-setup-turn-this-repo-into-a-template)
@@ -26,7 +42,7 @@ Every explainer follows the same path:
 6. [Text formatting](#6-text-formatting)
 7. [Before you publish: checklist](#7-before-you-publish-checklist)
 8. [Troubleshooting](#8-troubleshooting)
-9. [What's in this repo](#9-whats-in-this-repo)
+9. [Writing in Filipino or Taglish](#9-writing-in-filipino-or-taglish)
 10. [Privacy details](#10-privacy-details)
 
 ---
@@ -84,14 +100,22 @@ At this point the site shows the sample library-card explainer. That's expected.
 
 ### Step 5 — Update the link preview
 
-Facebook, Messenger and X read the title and description directly from `index.html`, so edit these 4 lines near the top of `index.html`:
+Facebook, Messenger, Instagram DMs and X read the preview straight from `index.html` (they don't run the page's code). Open `index.html`, find the part between `EDIT FOR EACH EXPLAINER` and `end of the part to edit`, and update these 6 lines:
 
 ```html
 <title>Passport renewal checker · Nice to Know</title>
 <meta name="description" content="Find out what you need to renew…">
-<meta property="og:title" content="Passport renewal checker · Nice to Know">
+<meta property="og:title" content="Passport renewal checker">
 <meta property="og:description" content="Find out what you need to renew…">
+<meta property="og:url" content="https://missniceph.github.io/passport-renewal/">
+<meta property="og:image" content="https://missniceph.github.io/passport-renewal/assets/share.png">
 ```
+
+In the last two lines, replace `passport-renewal` with your repo's name. If you forget, the GitHub check shows a reminder.
+
+After publishing, paste your link into Facebook's [Sharing Debugger](https://developers.facebook.com/tools/debug/) and click **Scrape Again** to see the preview and clear Facebook's old copy.
+
+**Changing the share image (optional).** The image is generic ("Answer a few questions. Get your own checklist."), so it fits every explainer. To change the words, edit the text in `assets/share.svg`, open the file in a browser, take a 1200 × 630 screenshot (or use any "SVG to PNG" converter), and save it as `assets/share.png`. Keep it under 300 KB.
 
 ### Step 6 — Set up the email sign-up (optional)
 
@@ -103,7 +127,7 @@ Go through the checker with a few different answer combinations, check the resul
 
 ### Updating later
 
-When the rules change: edit `content/topic.json`, update the facts, sources and `"asOf"` date, and commit. The site updates in about a minute.
+When the rules change: edit `content/topic.json`, update the facts, sources and `"asOf"` date, and commit. The site updates within about 10 minutes (GitHub publishes in 1–2 minutes, and browsers may keep the old version for up to 10 minutes).
 
 ### Preview on your computer (optional)
 
@@ -225,24 +249,24 @@ This is the full shape of `content/topic.json` with an explanation of every sett
     "timeZoneLabel": "PH time",
 
     // Optional. Shown in the top-left corner. The url is where the logo links to.
+    // (The footer always has a "Follow @missniceph on Instagram" link.)
     "channel": {
       "name": "Nice to Know",
       "handle": "@missniceph",
-      "url": "https://github.com/missniceph"
+      "url": "https://www.instagram.com/missniceph/"
     }
   },
 
   // ───────────────────────── UI LABELS (optional) ─────────────────────────
-  // Change any button or label text, e.g. to write the explainer in Filipino
-  // or Taglish. Leave out anything you don't want to change.
+  // Change any button or label text. Leave out anything you don't want to change.
   // {n}, {total}, {date}, {done} are filled in automatically.
-  // Full list of labels: see DEFAULT_UI at the top of assets/engine.js.
+  // For a full, ready-to-paste Filipino/Taglish set, see README section 9.
   "ui": {
-    "start": "Simulan",
+    "start": "Simulan na",
     "next": "Susunod",
     "back": "Bumalik",
-    "seeResult": "Tingnan ang resulta",
-    "questionOf": "Tanong {n} sa {total}",
+    "seeResult": "Tingnan ang resulta ko",
+    "questionOf": "Tanong {n} ng {total}",
     "daysLeft": "{n} araw na lang"
   },
 
@@ -326,7 +350,7 @@ This is the full shape of `content/topic.json` with an explanation of every sett
       // REQUIRED. Short name used in rules.
       "id": "full-card",
 
-      // Optional colour/feel of the box:
+      // Optional color/feel of the box:
       //   "good"   = green (good news)
       //   "info"   = blue (neutral, the default)
       //   "warn"   = yellow (careful / limitation)
@@ -604,7 +628,7 @@ To use a quote mark inside text, put a backslash before it: `"He said \"hi\""`.
 - [ ] Tried every answer path at least once: does each result make sense?
 - [ ] Deadlines: dates and times correct, and in the right time zone
 - [ ] Sign-up: real form details in place, tested with your own email, privacy notice accurate
-- [ ] Link preview lines in `index.html` updated
+- [ ] Link preview lines in `index.html` updated (title, description, og:url, og:image), and checked in Facebook's Sharing Debugger
 - [ ] Green ✓ on GitHub, and `?check` shows no surprising warnings
 - [ ] Looked at it on a phone, in both light and dark mode
 
@@ -622,7 +646,13 @@ The file is valid JSON but something is missing or misspelled. Each line in the 
 Either you opened `index.html` by double-clicking (use the local preview command in step 2, or just use the GitHub Pages link), or the file isn't at `content/topic.json`.
 
 **My changes don't show up.**
-GitHub Pages takes 1–2 minutes. Then refresh. On phones, a "hard refresh" may be needed: close the tab and open the link again.
+GitHub Pages takes 1–2 minutes to publish, and browsers may keep the old version for up to 10 minutes. To see it sooner, add something to the address like `?v=2`, or on a computer press Ctrl+Shift+R (Cmd+Shift+R on Mac).
+
+**The shared link shows the wrong title or image.**
+Check the link-preview lines in `index.html` (Step 5), then use Facebook's [Sharing Debugger](https://developers.facebook.com/tools/debug/) → **Scrape Again**. Facebook keeps old previews until you do this.
+
+**Dark mode stopped being remembered after I edited index.html.**
+The small `<script>` in `index.html` is protected by a security fingerprint (the `sha256-…` value in the Content-Security-Policy line). If that script is changed, browsers block it. Undo the change to the script, or ask for help updating the fingerprint.
 
 **Sign-ups don't appear in my Google Form.**
 Check: the address ends in `/formResponse` (not `/viewform`); the entry ids match the pre-filled link; `consentValue` matches the checkbox option text exactly; the form doesn't require sign-in or "collect email addresses"; the form is accepting responses.
@@ -632,22 +662,63 @@ Add another file, e.g. `content/draft.json`, and open `…/?topic=draft`. The ma
 
 ---
 
-## 9. What's in this repo
+## 9. Writing in Filipino or Taglish
 
-```
-index.html                 The page shell. Edit only the link-preview lines.
-content/topic.json         ← YOUR CONTENT. The only file you normally edit.
-assets/style.css           Look and feel. Colours are at the top (light + dark).
-assets/app.js              Draws the page from the content file.
-assets/engine.js           Checks the content file and applies the rules.
-assets/theme.js            Remembers the light/dark choice.
-assets/favicon.svg         Browser tab icon.
-tools/validate.mjs         Checks content files from the command line.
-.github/workflows/         The automatic ✓/✗ content check on GitHub.
-.nojekyll                  Tells GitHub Pages to serve the files as they are.
+Each explainer is in one language. Your own content (questions, results, FAQ…) is written in whatever language you like. The buttons and labels the template adds (like "Next" or "3 days left") are English by default. To switch them, paste this into `content/topic.json` right after the `meta` part, and set `"lang": "fil-PH"` in `meta` (this also makes dates show as "Nobyembre 1, 2026"):
+
+```json
+"ui": {
+  "start": "Simulan na",
+  "skip": "I-skip ang mga tanong at ipakita lahat",
+  "next": "Susunod",
+  "back": "Bumalik",
+  "seeResult": "Tingnan ang resulta ko",
+  "startOver": "Ulitin mula umpisa",
+  "editAnswers": "Baguhin ang mga sagot ko",
+  "questionOf": "Tanong {n} ng {total}",
+  "chooseOne": "Pumili ng isa",
+  "chooseAny": "Puwedeng pumili ng higit sa isa",
+  "needAnswer": "Pumili muna ng sagot bago magpatuloy.",
+  "resultHeading": "Ang resulta mo",
+  "resultIntro": "Base sa mga sagot mo:",
+  "resultSkipped": "In-skip mo ang mga tanong, kaya ipinapakita namin lahat sa ibaba. Sagutin ang mga tanong para makita ang resultang para sa'yo.",
+  "yourAnswers": "Mga sagot mo",
+  "checklistHeading": "Ang checklist mo",
+  "checklistPrint": "I-print o i-save bilang PDF",
+  "checklistProgress": "{done} sa {total} ang tapos na",
+  "deadlinesHeading": "Mga deadline",
+  "faqHeading": "Mga madalas itanong",
+  "sourcesHeading": "Mga pinagkunan",
+  "sourceLabel": "Pinagkunan",
+  "sourceAccessed": "Na-check noong {date}",
+  "asOf": "Huling na-check: {date}",
+  "daysLeft": "{n} araw na lang",
+  "dayLeft": "1 araw na lang",
+  "hoursLeft": "{n} oras na lang",
+  "today": "Ngayong araw na",
+  "passed": "Tapos na",
+  "privacyLine": "Dito lang sa browser tab na ito ang mga sagot mo. Hindi namin ito itinatago o ipinapadala kahit saan.",
+  "sampleBanner": "HALIMBAWA LANG – HINDI TOTOO",
+  "disclaimerHeading": "Paalala",
+  "signupEmail": "Email address",
+  "signupSubmit": "Mag-sign up",
+  "signupSending": "Ipinapadala…",
+  "signupErrorEmail": "Pakilagay ang tamang email address.",
+  "signupErrorConsent": "Paki-check ang consent box para puwede ka naming i-email.",
+  "signupErrorNetwork": "May problema. Pakicheck ang internet mo at subukan ulit.",
+  "signupPreview": "Preview lang ito: hindi pa naka-connect sa Google Form, kaya walang maipapadala.",
+  "signupSuccess": "Salamat! Kasama ka na sa listahan.",
+  "privacyPolicy": "Privacy policy",
+  "themeToLight": "Lumipat sa light mode",
+  "themeToDark": "Lumipat sa dark mode",
+  "skipToContent": "Diretso sa content",
+  "backToTop": "Bumalik sa itaas ↑",
+  "footerNote": "Walang ads, walang tracking, walang cookies.",
+  "followUs": "I-follow si @missniceph sa Instagram"
+},
 ```
 
-To change colours, edit the values at the top of `assets/style.css` (one block for light mode, two identical blocks for dark mode).
+Change any line to match your own voice. `{n}`, `{total}`, `{done}` and `{date}` are filled in automatically, so keep them as they are.
 
 ---
 

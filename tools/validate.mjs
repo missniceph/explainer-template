@@ -40,4 +40,17 @@ for (const file of files) {
     : `  ✓ Looks good${warnings.length ? ` (${warnings.length} warning(s) worth a look)` : ""}.`);
 }
 
+/* On GitHub: remind you to update the link-preview lines in index.html
+ * when a new explainer still points at another repo's address. */
+const repo = (process.env.GITHUB_REPOSITORY || "").split("/")[1];
+if (repo && !repo.endsWith(".github.io")) {
+  const html = readFileSync("index.html", "utf8");
+  for (const prop of ["og:url", "og:image"]) {
+    const m = html.match(new RegExp(`property="${prop}" content="([^"]*)"`));
+    if (m && !m[1].includes(`/${repo}/`)) {
+      console.log(`\n  ! index.html › ${prop}: points to ${m[1]}, but this repo is "${repo}". Update the link-preview lines so shares show the right page and image.`);
+    }
+  }
+}
+
 process.exit(failed ? 1 : 0);

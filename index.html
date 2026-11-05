@@ -1,51 +1,69 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-PH">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Security & privacy: only this site's own files may load, and the only
-       outside address the page may talk to is Google Forms (for the email sign-up). -->
+       outside address the page may talk to is Google Forms (for the email sign-up).
+       The sha256 value allows the small theme script below; if you ever edit
+       that script, the hash must be updated (see README › Troubleshooting). -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://docs.google.com; form-action 'self' https://docs.google.com; base-uri 'self'; object-src 'none'">
+        content="default-src 'self'; script-src 'self' 'sha256-GmnhtqxCh66uGd/RqOcLeR4jUxwbq4myMP2/8TFjXCo='; style-src 'self'; img-src 'self' data:; connect-src 'self' https://docs.google.com; form-action 'self' https://docs.google.com; base-uri 'self'; object-src 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
-  <!-- Edit these 4 lines for each explainer: link previews on Facebook,
-       Messenger, X etc. read them directly (they don't run JavaScript). -->
-  <title>Nice to Know · Explainer</title>
-  <meta name="description" content="An interactive explainer from Nice to Know (@missniceph).">
-  <meta property="og:title" content="Nice to Know · Explainer">
-  <meta property="og:description" content="An interactive explainer from Nice to Know (@missniceph).">
+  <!-- ===== EDIT FOR EACH EXPLAINER: link previews (Facebook, Messenger, X…) =====
+       These are read directly by the apps, which don't run JavaScript.
+       Replace "explainer-template" with your new repo's name in og:url and og:image. -->
+  <title>How to get a Lumen Bay library card (sample) · Nice to Know</title>
+  <meta name="description" content="SAMPLE CONTENT – NOT REAL. A made-up explainer showing how Nice to Know's interactive checkers work: answer a few questions, get your own checklist.">
+  <meta property="og:title" content="How to get a Lumen Bay library card (sample)">
+  <meta property="og:description" content="SAMPLE CONTENT – NOT REAL. Answer a few questions, get your own checklist. A demo of Nice to Know's interactive explainers.">
+  <meta property="og:url" content="https://missniceph.github.io/explainer-template/">
+  <meta property="og:image" content="https://missniceph.github.io/explainer-template/assets/share.png">
+  <!-- ===== end of the part to edit ===== -->
 
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Nice to Know interactive explainer: answer a few questions, get your own checklist.">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Nice to Know">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#fbf6ee" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#141a1b" media="(prefers-color-scheme: dark)">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <script src="assets/theme.js"></script>
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+  <!-- Remembers only the light/dark choice; runs first to avoid a flash. Do not edit (see CSP note above). -->
+  <script>try{var t=localStorage.getItem("explainer-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+  <!-- Start downloading everything at once, so slow connections wait less. -->
+  <link rel="preload" href="content/topic.json" as="fetch" crossorigin>
+  <link rel="modulepreload" href="assets/engine.js">
   <link rel="stylesheet" href="assets/style.css">
   <script type="module" src="assets/app.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <div id="sample-banner" class="sample-banner" role="note" hidden></div>
+  <aside id="sample-banner" class="sample-banner" aria-label="Notice" hidden></aside>
 
   <header class="site-header">
     <div class="wrap header-inner">
-      <a id="brand" class="brand" href="./">
+      <a id="brand" class="brand" href="https://www.instagram.com/missniceph/">
         <span class="brand-mark" aria-hidden="true">N</span>
         <span class="brand-text">
           <span class="brand-name">Nice to Know</span>
           <span class="brand-handle">@missniceph</span>
         </span>
       </a>
-      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme">
-        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
-        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch between light and dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
       </button>
     </div>
   </header>
 
-  <main id="main" class="wrap">
-    <div id="app" aria-busy="false">
+  <main id="main" class="wrap" tabindex="-1">
+    <div id="app">
       <div class="loading" role="status">
         <span class="spinner" aria-hidden="true"></span>
         Loading…
@@ -62,8 +80,11 @@
   <footer class="site-footer">
     <div class="wrap">
       <div id="footer-meta"></div>
-      <p class="small">No ads, no tracking, no cookies. Made with the Nice to Know explainer template.</p>
-      <p class="small"><a href="#main">Back to top ↑</a></p>
+      <p class="small" id="footer-note">No ads, no tracking, no cookies.</p>
+      <p class="footer-links">
+        <a id="follow-link" href="https://www.instagram.com/missniceph/" rel="noopener noreferrer" target="_blank">Follow @missniceph on Instagram</a>
+        <a id="top-link" href="#main">Back to top ↑</a>
+      </p>
     </div>
   </footer>
 </body>
