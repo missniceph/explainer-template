@@ -5,9 +5,9 @@ name: Check content
 
 on:
   push:
-    paths: ["content/**", "assets/engine.js", "tools/**"]
+    paths: ["content/**", "index.html", "assets/engine.js", "tools/**"]
   pull_request:
-    paths: ["content/**", "assets/engine.js", "tools/**"]
+    paths: ["content/**", "index.html", "assets/engine.js", "tools/**"]
   workflow_dispatch:
 
 permissions:

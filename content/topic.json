@@ -13,7 +13,7 @@
     "channel": {
       "name": "Nice to Know",
       "handle": "@missniceph",
-      "url": "https://github.com/missniceph"
+      "url": "https://www.instagram.com/missniceph/"
     }
   },
 
@@ -21,7 +21,7 @@
     "heading": "Can you get a library card, and what do you need?",
     "body": [
       "**This is sample content. Lumen Bay, its library, its rules and its \"Bay Tokens\" are all made up.** Nothing here is real advice about anything.",
-      "Answer 4–5 quick questions and you'll get a personalized result, a checklist of what to bring, the important dates, and answers to common questions."
+      "Answer a few quick questions to get a personalized result, a checklist of what to bring, the important dates, and answers to common questions."
     ],
     "timeNote": "Takes about 1 minute."
   },
@@ -59,6 +59,7 @@
     {
       "id": "history",
       "text": "Have you had a Lumen Bay library card before?",
+      "showIf": { "question": "residence", "isNot": "visitor" },
       "options": [
         { "value": "new", "label": "No, this is my first one" },
         { "value": "expired", "label": "Yes, but it expired" },
@@ -69,6 +70,7 @@
       "id": "borrow",
       "type": "multi",
       "text": "What would you like to borrow?",
+      "showIf": { "question": "residence", "isNot": "visitor" },
       "help": "Pick as many as you like.",
       "options": [
         { "value": "books", "label": "Books and comics" },
@@ -83,8 +85,8 @@
     {
       "id": "full-card",
       "tone": "good",
-      "title": "You can get a free Full Card",
-      "body": "As a Lumen Bay resident, you can get a Full Card for free. It lets you borrow up to 12 items at a time.",
+      "title": "You qualify for a free Full Card",
+      "body": "As a Lumen Bay resident, your Full Card is free. It lets you borrow up to 12 items at a time.",
       "sources": ["rules"]
     },
     {
@@ -105,7 +107,7 @@
       "id": "visitor-pass",
       "tone": "warn",
       "title": "You can get a Visitor Pass (reading room only)",
-      "body": "Visitors can't take items home, but a free Visitor Pass lets you read anything inside the library and use the computers for 1 hour a day.",
+      "body": "Visitors can't take items home, but a free Visitor Pass lets you read anything inside the library and use the computers for 1 hour a day. Bring a photo ID.",
       "sources": ["rules"]
     },
     {
@@ -126,7 +128,7 @@
       "id": "lost",
       "tone": "info",
       "title": "Replacing a lost card costs 2 Bay Tokens",
-      "body": "Report the lost card first so nobody else can use it. A replacement card costs 2 Bay Tokens and keeps your same card number.",
+      "body": "Report the lost card first so nobody else can use it. A replacement costs 2 Bay Tokens, even for free cards, and keeps your card number.",
       "sources": ["fees"]
     },
     {
@@ -175,16 +177,16 @@
     "heading": "What to bring",
     "intro": "Tick things off as you go. Your ticks aren't saved anywhere — print the list if you want to keep it.",
     "items": [
-      { "text": "Any ID with your photo", "detail": "A school ID is fine.", "sources": ["rules"], "when": { "question": "history", "isNot": "expired" } },
+      { "text": "Any ID with your photo", "detail": "A school ID is fine.", "sources": ["rules"], "when": { "not": { "question": "history", "is": "expired" } } },
       { "text": "Your old library card", "when": { "question": "history", "is": "expired" } },
       { "text": "Document with your Lumen Bay address", "detail": "A Lighthouse Water bill or rental agreement, dated within the last 3 months.", "sources": ["rules"], "when": { "question": "proof", "is": "yes" } },
       { "text": "A filled-in **Kindly Neighbor Letter**", "detail": "Signed by someone who already has a Full Card.", "sources": ["forms"], "when": { "question": "proof", "is": "no" } },
-      { "text": "Proof you work or study in Lumen Bay", "detail": "A company ID or school enrolment slip.", "sources": ["rules"], "when": { "question": "residence", "is": "nearby" } },
+      { "text": "Proof you work or study in Lumen Bay", "detail": "A company ID or school enrollment slip.", "sources": ["rules"], "when": { "question": "residence", "is": "nearby" } },
       { "text": "10 Bay Tokens for the yearly fee", "sources": ["fees"], "when": { "question": "residence", "is": "nearby" } },
       { "text": "2 Bay Tokens for the replacement card", "sources": ["fees"], "when": { "question": "history", "is": "lost" } },
       { "text": "A parent or guardian, plus their ID", "sources": ["rules"], "when": { "question": "age", "in": ["child", "teen"] } },
       { "text": "A small envelope for your seeds", "detail": "The Seed Library runs out of envelopes on weekends.", "when": { "question": "borrow", "is": "seeds" } },
-      { "text": "A reusable bag for your books" }
+      { "text": "A reusable bag for your books", "when": { "question": "residence", "isNot": "visitor" } }
     ]
   },
 
@@ -193,9 +195,9 @@
     "intro": "Dates are in Philippine time.",
     "items": [
       {
-        "title": "Autumn Story Fair sign-ups",
+        "title": "Story Fair sign-ups",
         "date": "2026-10-31",
-        "description": "Sign-ups for this year's fair have closed. This one is here to show how a past date looks.",
+        "description": "Sign-ups for this year's fair have closed. It's here to show how a past date looks.",
         "countdown": true
       },
       {

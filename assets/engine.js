@@ -16,7 +16,6 @@ export const SCHEMA_VERSION = 1;
 export const DEFAULT_UI = {
   start: "Start the checker",
   skip: "Skip the questions and show everything",
-  timeNote: "",
   next: "Next",
   back: "Back",
   seeResult: "See my result",
@@ -36,6 +35,7 @@ export const DEFAULT_UI = {
   deadlinesHeading: "Deadlines",
   faqHeading: "Frequently asked questions",
   sourcesHeading: "Sources",
+  sourceLabel: "Source",
   sourceAccessed: "Checked {date}",
   asOf: "Information as of {date}",
   daysLeft: "{n} days left",
@@ -53,9 +53,14 @@ export const DEFAULT_UI = {
   signupErrorConsent: "Please tick the consent box so we're allowed to email you.",
   signupErrorNetwork: "Something went wrong. Please check your connection and try again.",
   signupPreview: "Preview only: this form isn't connected to a Google Form yet, so nothing will be sent.",
+  signupSuccess: "Thank you! You're on the list.",
+  privacyPolicy: "Privacy policy",
   themeToLight: "Switch to light mode",
   themeToDark: "Switch to dark mode",
-  backToTop: "Back to top"
+  skipToContent: "Skip to content",
+  backToTop: "Back to top ↑",
+  footerNote: "No ads, no tracking, no cookies.",
+  followUs: "Follow @missniceph on Instagram"
 };
 
 const TONES = ["info", "good", "warn", "action"];
