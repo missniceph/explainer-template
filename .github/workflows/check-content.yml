@@ -1,0 +1,24 @@
+# Checks the content file every time you save a change on GitHub.
+# A green ✓ next to your commit means the explainer will load.
+# A red ✗ means something needs fixing: click it to see a plain-language list.
+name: Check content
+
+on:
+  push:
+    paths: ["content/**", "assets/engine.js", "tools/**"]
+  pull_request:
+    paths: ["content/**", "assets/engine.js", "tools/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/validate.mjs

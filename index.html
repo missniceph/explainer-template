@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Security & privacy: only this site's own files may load, and the only
+       outside address the page may talk to is Google Forms (for the email sign-up). -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://docs.google.com; form-action 'self' https://docs.google.com; base-uri 'self'; object-src 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <!-- Edit these 4 lines for each explainer: link previews on Facebook,
+       Messenger, X etc. read them directly (they don't run JavaScript). -->
+  <title>Nice to Know · Explainer</title>
+  <meta name="description" content="An interactive explainer from Nice to Know (@missniceph).">
+  <meta property="og:title" content="Nice to Know · Explainer">
+  <meta property="og:description" content="An interactive explainer from Nice to Know (@missniceph).">
+
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#fbf6ee" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141a1b" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <script src="assets/theme.js"></script>
+  <link rel="stylesheet" href="assets/style.css">
+  <script type="module" src="assets/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="sample-banner" class="sample-banner" role="note" hidden></div>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a id="brand" class="brand" href="./">
+        <span class="brand-mark" aria-hidden="true">N</span>
+        <span class="brand-text">
+          <span class="brand-name">Nice to Know</span>
+          <span class="brand-handle">@missniceph</span>
+        </span>
+      </a>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme">
+        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <div id="app" aria-busy="false">
+      <div class="loading" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        Loading…
+      </div>
+    </div>
+    <noscript>
+      <div class="card problem">
+        <h1>Please turn on JavaScript</h1>
+        <p>This interactive explainer needs JavaScript to run. Your answers are never saved or sent anywhere.</p>
+      </div>
+    </noscript>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div id="footer-meta"></div>
+      <p class="small">No ads, no tracking, no cookies. Made with the Nice to Know explainer template.</p>
+      <p class="small"><a href="#main">Back to top ↑</a></p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "nice-to-know-explainer",
+  "private": true,
+  "type": "module",
+  "description": "Reusable interactive explainer template for Nice to Know (@missniceph). No build step needed.",
+  "scripts": {
+    "check": "node tools/validate.mjs",
+    "serve": "python3 -m http.server 8000"
+  }
+}
